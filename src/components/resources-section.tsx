@@ -3,7 +3,7 @@ import { ARTICLES } from "@/lib/articles";
 
 export function ResourcesSection() {
   return (
-    <section className="border-b border-line">
+    <section id="resources" className="scroll-mt-20 border-b border-line">
       <div className="mx-auto max-w-7xl px-6 py-20 sm:px-8 lg:py-28">
         <div className="flex flex-wrap items-end justify-between gap-6">
           <h2 className="font-display text-4xl font-extrabold uppercase leading-[1.02] tracking-tight text-ink sm:text-5xl">
