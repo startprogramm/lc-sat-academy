@@ -2,7 +2,11 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { Gauge, Settings, LogOut } from "lucide-react";
 import { Logo } from "./logo";
+import { Avatar } from "./avatar";
+import { UserMenu } from "./user-menu";
+import { signOutAndRedirect } from "@/app/actions/auth";
 
 const NAV_LINKS = [
   { href: "/practice-tests", label: "Practice tests" },
@@ -11,7 +15,14 @@ const NAV_LINKS = [
   { href: "/resources", label: "Resources" },
 ];
 
-export function SiteHeader() {
+type SiteHeaderProps = {
+  user: {
+    name: string | null;
+    image: string | null;
+  } | null;
+};
+
+export function SiteHeader({ user }: SiteHeaderProps) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -34,19 +45,27 @@ export function SiteHeader() {
         </nav>
 
         <div className="flex items-center gap-3">
-          <Link
-            href="/login"
-            className="hidden text-sm font-medium text-ink-soft transition-colors hover:text-ink sm:block"
-          >
-            Log in
-          </Link>
-          <Link
-            href="/signup"
-            className="hidden items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-paper transition-colors hover:bg-accent/90 sm:inline-flex"
-          >
-            Start free
-            <span aria-hidden="true">→</span>
-          </Link>
+          {user ? (
+            <div className="hidden sm:block">
+              <UserMenu user={user} />
+            </div>
+          ) : (
+            <>
+              <Link
+                href="/login"
+                className="hidden text-sm font-medium text-ink-soft transition-colors hover:text-ink sm:block"
+              >
+                Log in
+              </Link>
+              <Link
+                href="/signup"
+                className="hidden items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-paper transition-colors hover:bg-accent/90 sm:inline-flex"
+              >
+                Start free
+                <span aria-hidden="true">→</span>
+              </Link>
+            </>
+          )}
 
           <button
             type="button"
@@ -94,25 +113,73 @@ export function SiteHeader() {
                 </Link>
               </li>
             ))}
-            <li className="mt-2 border-t border-line pt-2">
-              <Link
-                href="/login"
-                onClick={() => setOpen(false)}
-                className="block rounded-md px-2 py-2.5 text-base font-medium text-ink-soft transition-colors hover:bg-paper-dim hover:text-ink"
-              >
-                Log in
-              </Link>
-            </li>
-            <li className="mt-2">
-              <Link
-                href="/signup"
-                onClick={() => setOpen(false)}
-                className="flex items-center justify-center gap-1.5 rounded-full bg-accent px-4 py-2.5 text-sm font-semibold text-paper transition-colors hover:bg-accent/90"
-              >
-                Start free
-                <span aria-hidden="true">→</span>
-              </Link>
-            </li>
+            {user ? (
+              <>
+                <li className="mt-2 flex items-center gap-2 border-t border-line px-2 pt-3 pb-1">
+                  <Avatar
+                    name={user.name}
+                    image={user.image}
+                    className="h-8 w-8"
+                  />
+                  <span className="truncate text-sm font-semibold text-ink">
+                    {user.name ?? "Your account"}
+                  </span>
+                </li>
+                <li>
+                  <Link
+                    href="/dashboard"
+                    onClick={() => setOpen(false)}
+                    className="flex items-center gap-2.5 rounded-md px-2 py-2.5 text-base font-medium text-ink-soft transition-colors hover:bg-paper-dim hover:text-ink"
+                  >
+                    <Gauge className="h-[18px] w-[18px]" strokeWidth={2} />
+                    Dashboard
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/profile"
+                    onClick={() => setOpen(false)}
+                    className="flex items-center gap-2.5 rounded-md px-2 py-2.5 text-base font-medium text-ink-soft transition-colors hover:bg-paper-dim hover:text-ink"
+                  >
+                    <Settings className="h-[18px] w-[18px]" strokeWidth={2} />
+                    Settings
+                  </Link>
+                </li>
+                <li>
+                  <form action={signOutAndRedirect}>
+                    <button
+                      type="submit"
+                      className="flex w-full items-center gap-2.5 rounded-md px-2 py-2.5 text-left text-base font-medium text-ink-soft transition-colors hover:bg-paper-dim hover:text-ink"
+                    >
+                      <LogOut className="h-[18px] w-[18px]" strokeWidth={2} />
+                      Log out
+                    </button>
+                  </form>
+                </li>
+              </>
+            ) : (
+              <>
+                <li className="mt-2 border-t border-line pt-2">
+                  <Link
+                    href="/login"
+                    onClick={() => setOpen(false)}
+                    className="block rounded-md px-2 py-2.5 text-base font-medium text-ink-soft transition-colors hover:bg-paper-dim hover:text-ink"
+                  >
+                    Log in
+                  </Link>
+                </li>
+                <li className="mt-2">
+                  <Link
+                    href="/signup"
+                    onClick={() => setOpen(false)}
+                    className="flex items-center justify-center gap-1.5 rounded-full bg-accent px-4 py-2.5 text-sm font-semibold text-paper transition-colors hover:bg-accent/90"
+                  >
+                    Start free
+                    <span aria-hidden="true">→</span>
+                  </Link>
+                </li>
+              </>
+            )}
           </ul>
         </nav>
       ) : null}

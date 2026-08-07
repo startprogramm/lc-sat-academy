@@ -1,5 +1,6 @@
 import {
   boolean,
+  date,
   integer,
   pgEnum,
   pgTable,
@@ -11,6 +12,13 @@ import {
 import type { AdapterAccountType } from "next-auth/adapters";
 
 export const userRole = pgEnum("user_role", ["student", "teacher", "admin"]);
+export const gradeLevel = pgEnum("grade_level", [
+  "9",
+  "10",
+  "11",
+  "12",
+  "other",
+]);
 
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -20,6 +28,9 @@ export const users = pgTable("users", {
   image: text("image"),
   passwordHash: text("password_hash"),
   role: userRole("role").notNull().default("student"),
+  gradeLevel: gradeLevel("grade_level"),
+  targetTestDate: date("target_test_date", { mode: "string" }),
+  targetScore: integer("target_score"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
