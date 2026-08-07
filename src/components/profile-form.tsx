@@ -1,7 +1,11 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useMemo } from "react";
 import { updateProfile, type ProfileActionState } from "@/app/actions/profile";
+import {
+  formatSatTestDate,
+  upcomingSatTestDates,
+} from "@/lib/sat-test-dates";
 
 const GRADE_OPTIONS = [
   { value: "", label: "Select grade" },
@@ -31,6 +35,11 @@ export function ProfileForm({
     updateProfile,
     initialState,
   );
+
+  const testDates = useMemo(() => upcomingSatTestDates(), []);
+  const confirmedDates = testDates.filter((d) => d.confirmed);
+  const anticipatedDates = testDates.filter((d) => !d.confirmed);
+  const isKnownDate = testDates.some((d) => d.date === defaultTargetTestDate);
 
   return (
     <form action={formAction} className="space-y-5">
@@ -73,13 +82,37 @@ export function ProfileForm({
         >
           Target test date
         </label>
-        <input
+        <select
           id="targetTestDate"
           name="targetTestDate"
-          type="date"
           defaultValue={defaultTargetTestDate ?? ""}
           className="mt-1.5 w-full rounded-lg border border-line bg-white px-3.5 py-2.5 text-sm text-ink outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
-        />
+        >
+          <option value="">No test date yet</option>
+          {defaultTargetTestDate && !isKnownDate ? (
+            <option value={defaultTargetTestDate}>
+              {formatSatTestDate(defaultTargetTestDate)}
+            </option>
+          ) : null}
+          <optgroup label="Confirmed dates">
+            {confirmedDates.map((d) => (
+              <option key={d.date} value={d.date}>
+                {formatSatTestDate(d.date)}
+              </option>
+            ))}
+          </optgroup>
+          <optgroup label="Anticipated — schedule not yet finalized">
+            {anticipatedDates.map((d) => (
+              <option key={d.date} value={d.date}>
+                {formatSatTestDate(d.date)}
+              </option>
+            ))}
+          </optgroup>
+        </select>
+        <p className="mt-1.5 text-xs text-ink-soft">
+          Official College Board SAT dates — the digital SAT is only offered
+          on these Saturdays.
+        </p>
       </div>
 
       <div>
