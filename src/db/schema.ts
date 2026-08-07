@@ -7,6 +7,7 @@ import {
   primaryKey,
   text,
   timestamp,
+  unique,
   uuid,
 } from "drizzle-orm/pg-core";
 import type { AdapterAccountType } from "next-auth/adapters";
@@ -86,6 +87,10 @@ export const verificationTokens = pgTable(
 
 export const section = pgEnum("section", ["reading_writing", "math"]);
 export const difficulty = pgEnum("difficulty", ["easy", "medium", "hard"]);
+export const questionType = pgEnum("question_type", [
+  "multiple_choice",
+  "student_response",
+]);
 export const attemptStatus = pgEnum("attempt_status", [
   "in_progress",
   "completed",
@@ -101,12 +106,30 @@ export const practiceTests = pgTable("practice_tests", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+// A module is one timed block a student sees on screen: Reading & Writing
+// Module 1, Module 2, Math Module 1, Module 2 — matching the digital SAT's
+// Bluebook structure. orderIndex is the position across all 4 modules.
+export const testModules = pgTable("test_modules", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  testId: uuid("test_id")
+    .notNull()
+    .references(() => practiceTests.id, { onDelete: "cascade" }),
+  section: section("section").notNull(),
+  moduleNumber: integer("module_number").notNull(),
+  orderIndex: integer("order_index").notNull(),
+  timeLimitSeconds: integer("time_limit_seconds").notNull(),
+});
+
 export const questions = pgTable("questions", {
   id: uuid("id").primaryKey().defaultRandom(),
   section: section("section").notNull(),
+  type: questionType("type").notNull().default("multiple_choice"),
   topic: text("topic").notNull(),
   difficulty: difficulty("difficulty").notNull().default("medium"),
+  stimulus: text("stimulus"),
   stem: text("stem").notNull(),
+  // Accepted answer for student_response (free-entry) questions.
+  correctResponse: text("correct_response"),
   explanation: text("explanation"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
@@ -121,19 +144,21 @@ export const choices = pgTable("choices", {
   isCorrect: boolean("is_correct").notNull().default(false),
 });
 
-export const testQuestions = pgTable(
-  "test_questions",
+export const moduleQuestions = pgTable(
+  "module_questions",
   {
-    testId: uuid("test_id")
+    moduleId: uuid("module_id")
       .notNull()
-      .references(() => practiceTests.id, { onDelete: "cascade" }),
+      .references(() => testModules.id, { onDelete: "cascade" }),
     questionId: uuid("question_id")
       .notNull()
       .references(() => questions.id, { onDelete: "cascade" }),
     orderIndex: integer("order_index").notNull(),
   },
-  (testQuestion) => [
-    primaryKey({ columns: [testQuestion.testId, testQuestion.questionId] }),
+  (moduleQuestion) => [
+    primaryKey({
+      columns: [moduleQuestion.moduleId, moduleQuestion.questionId],
+    }),
   ],
 );
 
@@ -146,19 +171,27 @@ export const attempts = pgTable("attempts", {
     .notNull()
     .references(() => practiceTests.id, { onDelete: "cascade" }),
   status: attemptStatus("status").notNull().default("in_progress"),
+  currentModuleId: uuid("current_module_id").references(() => testModules.id),
   startedAt: timestamp("started_at").notNull().defaultNow(),
   completedAt: timestamp("completed_at"),
 });
 
-export const responses = pgTable("responses", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  attemptId: uuid("attempt_id")
-    .notNull()
-    .references(() => attempts.id, { onDelete: "cascade" }),
-  questionId: uuid("question_id")
-    .notNull()
-    .references(() => questions.id, { onDelete: "cascade" }),
-  selectedChoiceId: uuid("selected_choice_id").references(() => choices.id),
-  isCorrect: boolean("is_correct"),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+export const responses = pgTable(
+  "responses",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    attemptId: uuid("attempt_id")
+      .notNull()
+      .references(() => attempts.id, { onDelete: "cascade" }),
+    questionId: uuid("question_id")
+      .notNull()
+      .references(() => questions.id, { onDelete: "cascade" }),
+    selectedChoiceId: uuid("selected_choice_id").references(() => choices.id),
+    responseText: text("response_text"),
+    markedForReview: boolean("marked_for_review").notNull().default(false),
+    isCorrect: boolean("is_correct"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (response) => [unique().on(response.attemptId, response.questionId)],
+);

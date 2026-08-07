@@ -1,6 +1,15 @@
-import { count, desc, eq } from "drizzle-orm";
+import { and, asc, count, desc, eq, isNotNull, or } from "drizzle-orm";
 import { db } from "@/db";
-import { attempts, practiceTests, responses, users } from "@/db/schema";
+import {
+  attempts,
+  choices,
+  moduleQuestions,
+  practiceTests,
+  questions,
+  responses,
+  testModules,
+  users,
+} from "@/db/schema";
 
 export async function getUserById(userId: string) {
   const [user] = await db
@@ -16,12 +25,17 @@ export async function getUserStats(userId: string) {
     db
       .select({ value: count() })
       .from(attempts)
-      .where(eq(attempts.userId, userId)),
+      .where(and(eq(attempts.userId, userId), eq(attempts.status, "completed"))),
     db
       .select({ value: count() })
       .from(responses)
       .innerJoin(attempts, eq(responses.attemptId, attempts.id))
-      .where(eq(attempts.userId, userId)),
+      .where(
+        and(
+          eq(attempts.userId, userId),
+          or(isNotNull(responses.selectedChoiceId), isNotNull(responses.responseText)),
+        ),
+      ),
   ]);
 
   return {
@@ -38,10 +52,309 @@ export async function getRecentAttempts(userId: string, limit = 5) {
       startedAt: attempts.startedAt,
       completedAt: attempts.completedAt,
       testTitle: practiceTests.title,
+      testSlug: practiceTests.slug,
     })
     .from(attempts)
     .innerJoin(practiceTests, eq(attempts.testId, practiceTests.id))
     .where(eq(attempts.userId, userId))
     .orderBy(desc(attempts.startedAt))
     .limit(limit);
+}
+
+// --- Practice test catalog ---
+
+export async function getPublishedPracticeTests() {
+  const tests = await db
+    .select()
+    .from(practiceTests)
+    .where(eq(practiceTests.isPublished, true))
+    .orderBy(desc(practiceTests.createdAt));
+
+  const modules = await db
+    .select({
+      testId: testModules.testId,
+      section: testModules.section,
+      moduleNumber: testModules.moduleNumber,
+      timeLimitSeconds: testModules.timeLimitSeconds,
+    })
+    .from(testModules);
+
+  return tests.map((test) => {
+    const testModulesList = modules.filter((m) => m.testId === test.id);
+    const totalSeconds = testModulesList.reduce((sum, m) => sum + m.timeLimitSeconds, 0);
+    return {
+      ...test,
+      moduleCount: testModulesList.length,
+      totalMinutes: Math.round(totalSeconds / 60),
+      sections: [...new Set(testModulesList.map((m) => m.section))],
+    };
+  });
+}
+
+export async function getPracticeTestBySlug(slug: string) {
+  const [test] = await db
+    .select()
+    .from(practiceTests)
+    .where(eq(practiceTests.slug, slug))
+    .limit(1);
+  if (!test) return null;
+
+  const modules = await db
+    .select({
+      id: testModules.id,
+      section: testModules.section,
+      moduleNumber: testModules.moduleNumber,
+      orderIndex: testModules.orderIndex,
+      timeLimitSeconds: testModules.timeLimitSeconds,
+    })
+    .from(testModules)
+    .where(eq(testModules.testId, test.id))
+    .orderBy(asc(testModules.orderIndex));
+
+  const questionCounts = await db
+    .select({ moduleId: moduleQuestions.moduleId, value: count() })
+    .from(moduleQuestions)
+    .where(
+      modules.length > 0
+        ? or(...modules.map((m) => eq(moduleQuestions.moduleId, m.id)))
+        : undefined,
+    )
+    .groupBy(moduleQuestions.moduleId);
+
+  const countByModule = new Map(questionCounts.map((c) => [c.moduleId, c.value]));
+
+  return {
+    ...test,
+    modules: modules.map((m) => ({
+      ...m,
+      questionCount: countByModule.get(m.id) ?? 0,
+    })),
+  };
+}
+
+export async function getLatestAttemptForTest(userId: string, testId: string) {
+  const [attempt] = await db
+    .select()
+    .from(attempts)
+    .where(and(eq(attempts.userId, userId), eq(attempts.testId, testId)))
+    .orderBy(desc(attempts.startedAt))
+    .limit(1);
+  return attempt ?? null;
+}
+
+// --- Test runner ---
+
+export async function getAttemptForRunner(attemptId: string, userId: string) {
+  const [attempt] = await db
+    .select()
+    .from(attempts)
+    .where(and(eq(attempts.id, attemptId), eq(attempts.userId, userId)))
+    .limit(1);
+  if (!attempt) return null;
+
+  const [test] = await db
+    .select()
+    .from(practiceTests)
+    .where(eq(practiceTests.id, attempt.testId))
+    .limit(1);
+  if (!test) return null;
+
+  const modules = await db
+    .select({
+      id: testModules.id,
+      section: testModules.section,
+      moduleNumber: testModules.moduleNumber,
+      orderIndex: testModules.orderIndex,
+      timeLimitSeconds: testModules.timeLimitSeconds,
+    })
+    .from(testModules)
+    .where(eq(testModules.testId, test.id))
+    .orderBy(asc(testModules.orderIndex));
+
+  const moduleIds = modules.map((m) => m.id);
+
+  const questionRows =
+    moduleIds.length > 0
+      ? await db
+          .select({
+            moduleId: moduleQuestions.moduleId,
+            orderIndex: moduleQuestions.orderIndex,
+            id: questions.id,
+            type: questions.type,
+            topic: questions.topic,
+            stimulus: questions.stimulus,
+            stem: questions.stem,
+          })
+          .from(moduleQuestions)
+          .innerJoin(questions, eq(moduleQuestions.questionId, questions.id))
+          .where(or(...moduleIds.map((id) => eq(moduleQuestions.moduleId, id))))
+          .orderBy(asc(moduleQuestions.orderIndex))
+      : [];
+
+  const questionIds = questionRows.map((q) => q.id);
+
+  const choiceRows =
+    questionIds.length > 0
+      ? await db
+          .select({
+            questionId: choices.questionId,
+            id: choices.id,
+            label: choices.label,
+            body: choices.body,
+          })
+          .from(choices)
+          .where(or(...questionIds.map((id) => eq(choices.questionId, id))))
+      : [];
+
+  const choicesByQuestion = new Map<string, typeof choiceRows>();
+  for (const c of choiceRows) {
+    const list = choicesByQuestion.get(c.questionId) ?? [];
+    list.push(c);
+    choicesByQuestion.set(c.questionId, list);
+  }
+
+  const existingResponses = await db
+    .select({
+      questionId: responses.questionId,
+      selectedChoiceId: responses.selectedChoiceId,
+      responseText: responses.responseText,
+      markedForReview: responses.markedForReview,
+    })
+    .from(responses)
+    .where(eq(responses.attemptId, attemptId));
+
+  const modulesWithQuestions = modules.map((m) => ({
+    ...m,
+    questions: questionRows
+      .filter((q) => q.moduleId === m.id)
+      .map((q) => ({
+        id: q.id,
+        type: q.type,
+        topic: q.topic,
+        stimulus: q.stimulus,
+        stem: q.stem,
+        choices: (choicesByQuestion.get(q.id) ?? []).map((c) => ({
+          id: c.id,
+          label: c.label,
+          body: c.body,
+        })),
+      })),
+  }));
+
+  return {
+    attemptId: attempt.id,
+    status: attempt.status,
+    currentModuleId: attempt.currentModuleId,
+    testTitle: test.title,
+    testSlug: test.slug,
+    modules: modulesWithQuestions,
+    existingResponses,
+  };
+}
+
+// --- Results ---
+
+export async function getAttemptResults(attemptId: string, userId: string) {
+  const [attempt] = await db
+    .select()
+    .from(attempts)
+    .where(and(eq(attempts.id, attemptId), eq(attempts.userId, userId)))
+    .limit(1);
+  if (!attempt) return null;
+
+  const [test] = await db
+    .select()
+    .from(practiceTests)
+    .where(eq(practiceTests.id, attempt.testId))
+    .limit(1);
+  if (!test) return null;
+
+  const modules = await db
+    .select()
+    .from(testModules)
+    .where(eq(testModules.testId, test.id))
+    .orderBy(asc(testModules.orderIndex));
+
+  const moduleIds = modules.map((m) => m.id);
+
+  const questionRows =
+    moduleIds.length > 0
+      ? await db
+          .select({
+            moduleId: moduleQuestions.moduleId,
+            orderIndex: moduleQuestions.orderIndex,
+            id: questions.id,
+            section: questions.section,
+            type: questions.type,
+            topic: questions.topic,
+            stimulus: questions.stimulus,
+            stem: questions.stem,
+            correctResponse: questions.correctResponse,
+            explanation: questions.explanation,
+          })
+          .from(moduleQuestions)
+          .innerJoin(questions, eq(moduleQuestions.questionId, questions.id))
+          .where(or(...moduleIds.map((id) => eq(moduleQuestions.moduleId, id))))
+          .orderBy(asc(moduleQuestions.orderIndex))
+      : [];
+
+  const questionIds = questionRows.map((q) => q.id);
+
+  const choiceRows =
+    questionIds.length > 0
+      ? await db
+          .select()
+          .from(choices)
+          .where(or(...questionIds.map((id) => eq(choices.questionId, id))))
+      : [];
+
+  const choicesByQuestion = new Map<string, typeof choiceRows>();
+  for (const c of choiceRows) {
+    const list = choicesByQuestion.get(c.questionId) ?? [];
+    list.push(c);
+    choicesByQuestion.set(c.questionId, list);
+  }
+
+  const responseRows = await db
+    .select()
+    .from(responses)
+    .where(eq(responses.attemptId, attemptId));
+  const responseByQuestion = new Map(responseRows.map((r) => [r.questionId, r]));
+
+  const questionResults = questionRows.map((q) => {
+    const qChoices = choicesByQuestion.get(q.id) ?? [];
+    const response = responseByQuestion.get(q.id);
+    const correctChoice = qChoices.find((c) => c.isCorrect);
+    return {
+      ...q,
+      choices: qChoices,
+      response: response ?? null,
+      correctChoiceId: correctChoice?.id ?? null,
+      isCorrect: response?.isCorrect ?? false,
+      wasAnswered: !!(response?.selectedChoiceId || response?.responseText),
+    };
+  });
+
+  const bySection = (sec: "reading_writing" | "math") =>
+    questionResults.filter((q) => q.section === sec);
+
+  const summarize = (list: typeof questionResults) => ({
+    total: list.length,
+    correct: list.filter((q) => q.isCorrect).length,
+  });
+
+  return {
+    testTitle: test.title,
+    testSlug: test.slug,
+    completedAt: attempt.completedAt,
+    overall: summarize(questionResults),
+    readingWriting: summarize(bySection("reading_writing")),
+    math: summarize(bySection("math")),
+    modules: modules.map((m) => ({
+      ...m,
+      questions: questionResults
+        .filter((q) => q.moduleId === m.id)
+        .sort((a, b) => a.orderIndex - b.orderIndex),
+    })),
+  };
 }
