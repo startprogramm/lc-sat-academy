@@ -5,10 +5,10 @@ const COLUMNS: { title: string; links: { href: string; label: string }[] }[] = [
   {
     title: "Product",
     links: [
-      { href: "/practice-tests", label: "Practice tests" },
-      { href: "/question-bank", label: "Question bank" },
-      { href: "/progress", label: "Progress tracking" },
-      { href: "/classrooms", label: "For classrooms" },
+      { href: "/features/practice-tests", label: "Practice tests" },
+      { href: "/features/question-bank", label: "Question bank" },
+      { href: "/features/progress", label: "Progress tracking" },
+      { href: "/features/classrooms", label: "For classrooms" },
     ],
   },
   {

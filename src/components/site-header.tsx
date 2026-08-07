@@ -9,9 +9,9 @@ import { UserMenu } from "./user-menu";
 import { signOutAndRedirect } from "@/app/actions/auth";
 
 const NAV_LINKS = [
-  { href: "/practice-tests", label: "Practice tests" },
-  { href: "/question-bank", label: "Question bank" },
-  { href: "/progress", label: "Progress" },
+  { href: "/features/practice-tests", label: "Practice tests" },
+  { href: "/features/question-bank", label: "Question bank" },
+  { href: "/features/progress", label: "Progress" },
   { href: "/resources", label: "Resources" },
 ];
 

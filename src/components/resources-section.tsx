@@ -1,22 +1,5 @@
 import Link from "next/link";
-
-const ARTICLES = [
-  {
-    tag: "Scoring",
-    title: "How digital SAT adaptive scoring actually works",
-    href: "/resources/adaptive-scoring-explained",
-  },
-  {
-    tag: "Study plan",
-    title: "A 6-week study plan for a 200-point increase",
-    href: "/resources/6-week-study-plan",
-  },
-  {
-    tag: "Reading & Writing",
-    title: "The 5 most common Reading & Writing traps",
-    href: "/resources/reading-writing-traps",
-  },
-];
+import { ARTICLES } from "@/lib/articles";
 
 export function ResourcesSection() {
   return (
@@ -37,8 +20,8 @@ export function ResourcesSection() {
         <div className="mt-12 grid gap-8 sm:grid-cols-3">
           {ARTICLES.map((article) => (
             <Link
-              key={article.href}
-              href={article.href}
+              key={article.slug}
+              href={`/resources/${article.slug}`}
               className="group block border-t border-line pt-6"
             >
               <span className="font-mono text-xs font-semibold uppercase tracking-wider text-brand">
