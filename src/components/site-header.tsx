@@ -13,7 +13,7 @@ const NAV_LINKS = [
   { href: "/#question-bank", label: "Question bank" },
   { href: "/#progress", label: "Progress" },
   { href: "/pricing", label: "Pricing" },
-  { href: "/#in-person-classes", label: "In-person classes" },
+  { href: "/#in-person-classes", label: "Classes" },
   { href: "/#resources", label: "Resources" },
 ];
 
