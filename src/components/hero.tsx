@@ -45,6 +45,13 @@ export function Hero() {
             >
               Take a diagnostic test
             </Link>
+            <Link
+              href="/#in-person-classes"
+              className="inline-flex items-center gap-1.5 rounded-full border border-line px-4 py-2 text-xs font-semibold text-ink-soft transition-colors hover:border-ink hover:text-ink"
+            >
+              In-person classes
+              <span aria-hidden="true">→</span>
+            </Link>
           </div>
 
           <p className="mt-4 text-sm text-ink-soft">

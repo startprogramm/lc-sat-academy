@@ -3,7 +3,7 @@ import { MapPin } from "lucide-react";
 
 export function OfflineCourseBand() {
   return (
-    <section className="border-b border-line bg-ink">
+    <section id="in-person-classes" className="scroll-mt-20 border-b border-line bg-ink">
       <div className="mx-auto flex max-w-7xl flex-col items-start justify-between gap-8 px-6 py-14 sm:px-8 sm:py-16 lg:flex-row lg:items-center">
         <div>
           <span className="inline-flex items-center gap-1.5 rounded-full border border-paper/20 px-3 py-1 font-mono text-xs font-semibold uppercase tracking-wider text-pencil">
