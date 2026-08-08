@@ -40,9 +40,16 @@ export default async function PracticeTestDetailPage({
         ← All practice tests
       </Link>
 
-      <span className="mt-6 block font-mono text-xs font-semibold uppercase tracking-wider text-ink-soft">
-        Practice test
-      </span>
+      <div className="mt-6 flex items-center gap-2">
+        <span className="block font-mono text-xs font-semibold uppercase tracking-wider text-ink-soft">
+          Practice test
+        </span>
+        {!test.isFullLength ? (
+          <span className="rounded-full bg-accent/10 px-2.5 py-1 font-mono text-[10px] font-semibold uppercase tracking-wide text-accent">
+            Shorter sample
+          </span>
+        ) : null}
+      </div>
       <h1 className="mt-2 font-display text-3xl font-extrabold uppercase tracking-tight text-ink sm:text-4xl">
         {test.title}
       </h1>
@@ -50,11 +57,21 @@ export default async function PracticeTestDetailPage({
         <p className="mt-3 text-ink-soft">{test.description}</p>
       ) : null}
 
+      {!test.isFullLength ? (
+        <div className="mt-4 rounded-2xl border border-accent/30 bg-accent/5 p-4 text-sm leading-6 text-ink">
+          This is a shorter, {test.totalQuestions}-question sample — not a
+          full-length test. It&apos;s timed at the same pace as the real
+          digital SAT, just with fewer questions per module, so treat it as a
+          quick check-in rather than a full practice run.
+        </div>
+      ) : null}
+
       <div className="mt-8 rounded-2xl border border-line bg-white p-6">
         <div className="flex items-center gap-2 border-b border-line pb-4">
           <Clock className="h-4 w-4 text-brand" strokeWidth={2} />
           <span className="text-sm font-semibold text-ink">
-            Standard time · ~{totalMinutes} minutes total
+            {test.isFullLength ? "Standard time" : "Sample timing"} · ~
+            {totalMinutes} minutes total
           </span>
         </div>
         <ul className="mt-4 space-y-3">

@@ -390,10 +390,14 @@ const MODULES: {
   timeLimitSeconds: number;
   questions: QuestionInput[];
 }[] = [
-  { section: "reading_writing", moduleNumber: 1, timeLimitSeconds: 32 * 60, questions: RW_MODULE_1 },
-  { section: "reading_writing", moduleNumber: 2, timeLimitSeconds: 32 * 60, questions: RW_MODULE_2 },
-  { section: "math", moduleNumber: 1, timeLimitSeconds: 35 * 60, questions: MATH_MODULE_1 },
-  { section: "math", moduleNumber: 2, timeLimitSeconds: 35 * 60, questions: MATH_MODULE_2 },
+  // This diagnostic is a 6-question-per-module sample, not the real 27/22
+  // question count, so it gets a shorter time limit than the real digital
+  // SAT — held at roughly the same per-question pace (real R&W is 71s/question,
+  // real Math is 95s/question) rather than the full 32/35 minutes.
+  { section: "reading_writing", moduleNumber: 1, timeLimitSeconds: 7 * 60, questions: RW_MODULE_1 },
+  { section: "reading_writing", moduleNumber: 2, timeLimitSeconds: 7 * 60, questions: RW_MODULE_2 },
+  { section: "math", moduleNumber: 1, timeLimitSeconds: 10 * 60, questions: MATH_MODULE_1 },
+  { section: "math", moduleNumber: 2, timeLimitSeconds: 10 * 60, questions: MATH_MODULE_2 },
 ];
 
 async function main() {
@@ -411,10 +415,10 @@ async function main() {
   const [test] = await db
     .insert(practiceTests)
     .values({
-      title: "Diagnostic Practice Test",
+      title: "Diagnostic Practice Test (Sample)",
       slug: TEST_SLUG,
       description:
-        "A short, full-flow sample test across all four Bluebook-style modules — Reading & Writing and Math — timed like the real thing.",
+        "A short, 24-question sample across all four Bluebook-style modules — Reading & Writing and Math — so you can try the real test flow before committing to a full-length attempt.",
       isPublished: true,
     })
     .returning();

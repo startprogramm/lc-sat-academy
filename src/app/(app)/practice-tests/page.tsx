@@ -24,10 +24,12 @@ export default async function PracticeTestsPage() {
         Practice tests
       </span>
       <h1 className="mt-2 font-display text-3xl font-extrabold uppercase tracking-tight text-ink sm:text-4xl">
-        Full-length practice tests
+        Practice tests
       </h1>
       <p className="mt-2 max-w-lg text-ink-soft">
-        Timed, module by module, just like the real digital SAT.
+        Timed, module by module, just like the real digital SAT. Full-length
+        tests match the real question count; shorter samples are marked so
+        you know what you&apos;re taking.
       </p>
 
       {tests.length === 0 ? (
@@ -53,6 +55,11 @@ export default async function PracticeTestsPage() {
                 className="rounded-2xl border border-line bg-white p-6"
               >
                 <div className="flex flex-wrap items-center gap-2">
+                  {!test.isFullLength ? (
+                    <span className="rounded-full bg-accent/10 px-2.5 py-1 font-mono text-[10px] font-semibold uppercase tracking-wide text-accent">
+                      Shorter sample
+                    </span>
+                  ) : null}
                   {test.sections.map((section) => (
                     <span
                       key={section}
@@ -71,7 +78,7 @@ export default async function PracticeTestsPage() {
                   </p>
                 ) : null}
                 <p className="mt-3 font-mono text-xs text-ink-soft">
-                  {test.moduleCount} modules · ~{test.totalMinutes} min
+                  {test.totalQuestions} questions · ~{test.totalMinutes} min
                 </p>
 
                 <Link

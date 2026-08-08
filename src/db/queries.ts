@@ -11,6 +11,11 @@ import {
   users,
 } from "@/db/schema";
 
+// A real digital SAT is 27+27 Reading & Writing and 22+22 Math questions.
+// Tests with fewer questions than this (e.g. a diagnostic sample) get
+// flagged as `isFullLength: false` so the UI can call that out.
+const FULL_LENGTH_QUESTION_COUNT = 98;
+
 export async function getUserById(userId: string) {
   const [user] = await db
     .select()
@@ -72,6 +77,7 @@ export async function getPublishedPracticeTests() {
 
   const modules = await db
     .select({
+      id: testModules.id,
       testId: testModules.testId,
       section: testModules.section,
       moduleNumber: testModules.moduleNumber,
@@ -79,13 +85,25 @@ export async function getPublishedPracticeTests() {
     })
     .from(testModules);
 
+  const questionCounts = await db
+    .select({ moduleId: moduleQuestions.moduleId, value: count() })
+    .from(moduleQuestions)
+    .groupBy(moduleQuestions.moduleId);
+  const countByModule = new Map(questionCounts.map((c) => [c.moduleId, c.value]));
+
   return tests.map((test) => {
     const testModulesList = modules.filter((m) => m.testId === test.id);
     const totalSeconds = testModulesList.reduce((sum, m) => sum + m.timeLimitSeconds, 0);
+    const totalQuestions = testModulesList.reduce(
+      (sum, m) => sum + (countByModule.get(m.id) ?? 0),
+      0,
+    );
     return {
       ...test,
       moduleCount: testModulesList.length,
       totalMinutes: Math.round(totalSeconds / 60),
+      totalQuestions,
+      isFullLength: totalQuestions >= FULL_LENGTH_QUESTION_COUNT,
       sections: [...new Set(testModulesList.map((m) => m.section))],
     };
   });
@@ -122,9 +140,15 @@ export async function getPracticeTestBySlug(slug: string) {
     .groupBy(moduleQuestions.moduleId);
 
   const countByModule = new Map(questionCounts.map((c) => [c.moduleId, c.value]));
+  const totalQuestions = modules.reduce(
+    (sum, m) => sum + (countByModule.get(m.id) ?? 0),
+    0,
+  );
 
   return {
     ...test,
+    totalQuestions,
+    isFullLength: totalQuestions >= FULL_LENGTH_QUESTION_COUNT,
     modules: modules.map((m) => ({
       ...m,
       questionCount: countByModule.get(m.id) ?? 0,
