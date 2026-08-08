@@ -3,6 +3,7 @@ import { Hero } from "@/components/hero";
 import { StatBand } from "@/components/stat-band";
 import { MissionSection } from "@/components/mission-section";
 import { FeaturesSection } from "@/components/features-section";
+import { OfflineCourseBand } from "@/components/offline-course-band";
 import { ProductSpotlight } from "@/components/product-spotlight";
 import { TestModuleVisual } from "@/components/visuals/test-module-visual";
 import { QuestionCardStack } from "@/components/visuals/question-card-stack";
@@ -20,6 +21,7 @@ export default async function Home() {
       <StatBand />
       <MissionSection />
       <FeaturesSection />
+      <OfflineCourseBand />
 
       <ProductSpotlight
         id="practice-tests"
