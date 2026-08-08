@@ -4,6 +4,7 @@ import { Check, X as XIcon } from "lucide-react";
 import { auth } from "@/auth";
 import { Logo } from "@/components/logo";
 import { getAttemptResults } from "@/db/queries";
+import { getSectionScoreRange, getTotalScoreRange, isExactTableFit } from "@/lib/sat-scoring";
 
 const SECTION_LABELS: Record<string, string> = {
   reading_writing: "Reading and Writing",
@@ -26,6 +27,22 @@ export default async function TestResultsPage({
     results.overall.total > 0
       ? Math.round((results.overall.correct / results.overall.total) * 100)
       : 0;
+
+  const rwScore = getSectionScoreRange(
+    results.readingWriting.correct,
+    results.readingWriting.total,
+    "reading_writing",
+  );
+  const mathScore = getSectionScoreRange(results.math.correct, results.math.total, "math");
+  const totalScore = getTotalScoreRange(
+    results.readingWriting.correct,
+    results.readingWriting.total,
+    results.math.correct,
+    results.math.total,
+  );
+  const isExactScoring =
+    isExactTableFit(results.readingWriting.total, "reading_writing") &&
+    isExactTableFit(results.math.total, "math");
 
   return (
     <div className="min-h-screen bg-paper">
@@ -51,7 +68,25 @@ export default async function TestResultsPage({
           {results.testTitle}
         </h1>
 
-        <div className="mt-8 grid gap-4 sm:grid-cols-3">
+        <div className="mt-8 rounded-2xl border border-line bg-ink p-6 text-paper">
+          <p className="font-mono text-xs font-semibold uppercase tracking-wider text-paper/60">
+            Estimated SAT score
+          </p>
+          <p className="mt-2 font-display text-4xl font-extrabold tracking-tight sm:text-5xl">
+            {totalScore.lower}–{totalScore.upper}
+            <span className="ml-2 text-base font-normal text-paper/60">/ 1600</span>
+          </p>
+          <div className="mt-4 flex flex-wrap gap-6 font-mono text-sm text-paper/80">
+            <span>
+              Reading and Writing: {rwScore.lower}–{rwScore.upper}
+            </span>
+            <span>
+              Math: {mathScore.lower}–{mathScore.upper}
+            </span>
+          </div>
+        </div>
+
+        <div className="mt-4 grid gap-4 sm:grid-cols-3">
           <div className="rounded-2xl border border-line bg-white p-6">
             <p className="font-mono text-4xl font-semibold tracking-tight text-ink">
               {results.overall.correct}
@@ -84,9 +119,9 @@ export default async function TestResultsPage({
         </div>
 
         <p className="mt-4 text-xs text-ink-soft">
-          This shows raw questions correct, not an official 200–800 scaled
-          score — scaling requires College Board&apos;s official conversion
-          tables.
+          {isExactScoring
+            ? "Estimated using College Board's official simplified raw-score conversion table. Actual scoring on the real exam uses adaptive, question-level scoring and may differ."
+            : "Estimated by proportionally mapping this test's raw score onto College Board's official simplified conversion table (calibrated for a different question count), then applying that curve. Treat this as a rough guide, not a precise prediction — actual scoring on the real exam uses adaptive, question-level scoring."}
         </p>
 
         <h2 className="mt-10 font-display text-xl font-bold text-ink">

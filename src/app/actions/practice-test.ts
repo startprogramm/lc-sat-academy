@@ -16,6 +16,13 @@ import {
 
 function normalizeResponse(value: string): string {
   const trimmed = value.trim().replace(/^\$/, "").replace(/,/g, "");
+  const fractionMatch = trimmed.match(/^(-?\d+)\/(\d+)$/);
+  if (fractionMatch) {
+    const denominator = Number(fractionMatch[2]);
+    if (denominator !== 0) {
+      return String(Number(fractionMatch[1]) / denominator);
+    }
+  }
   const asNumber = Number(trimmed);
   if (!Number.isNaN(asNumber) && trimmed !== "") {
     return String(asNumber);
