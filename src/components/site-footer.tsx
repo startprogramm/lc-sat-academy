@@ -9,6 +9,7 @@ const COLUMNS: { title: string; links: { href: string; label: string }[] }[] = [
       { href: "/#question-bank", label: "Question bank" },
       { href: "/#progress", label: "Progress tracking" },
       { href: "/pricing", label: "Pricing" },
+      { href: "/courses/sat-math", label: "SAT Math (in person)" },
       { href: "/features/classrooms", label: "For classrooms" },
     ],
   },
