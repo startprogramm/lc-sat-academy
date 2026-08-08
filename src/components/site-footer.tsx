@@ -8,6 +8,7 @@ const COLUMNS: { title: string; links: { href: string; label: string }[] }[] = [
       { href: "/#practice-tests", label: "Practice tests" },
       { href: "/#question-bank", label: "Question bank" },
       { href: "/#progress", label: "Progress tracking" },
+      { href: "/pricing", label: "Pricing" },
       { href: "/features/classrooms", label: "For classrooms" },
     ],
   },

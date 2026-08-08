@@ -12,6 +12,7 @@ const NAV_LINKS = [
   { href: "/#practice-tests", label: "Practice tests" },
   { href: "/#question-bank", label: "Question bank" },
   { href: "/#progress", label: "Progress" },
+  { href: "/pricing", label: "Pricing" },
   { href: "/#resources", label: "Resources" },
 ];
 
