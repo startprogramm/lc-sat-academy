@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, isNotNull, or } from "drizzle-orm";
+import { and, asc, count, desc, eq, isNotNull, or, sql } from "drizzle-orm";
 import { db } from "@/db";
 import {
   attempts,
@@ -168,6 +168,32 @@ export async function getLatestAttemptForTest(userId: string, testId: string) {
     .orderBy(desc(attempts.startedAt))
     .limit(1);
   return attempt ?? null;
+}
+
+// --- Question bank ---
+
+// One row per (section, topic, difficulty) combo, counting only questions
+// that belong to at least one module of a published test — so the bank
+// never surfaces content from a draft/unpublished test.
+export async function getQuestionBankMeta() {
+  return db
+    .select({
+      section: questions.section,
+      topic: questions.topic,
+      difficulty: questions.difficulty,
+      value: count(),
+    })
+    .from(questions)
+    .where(
+      sql`EXISTS (
+        SELECT 1 FROM ${moduleQuestions}
+        INNER JOIN ${testModules} ON ${testModules.id} = ${moduleQuestions.moduleId}
+        INNER JOIN ${practiceTests} ON ${practiceTests.id} = ${testModules.testId}
+        WHERE ${moduleQuestions.questionId} = ${questions.id}
+          AND ${practiceTests.isPublished} = true
+      )`,
+    )
+    .groupBy(questions.section, questions.topic, questions.difficulty);
 }
 
 // --- Test runner ---
