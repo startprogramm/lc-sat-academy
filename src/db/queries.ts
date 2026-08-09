@@ -74,7 +74,7 @@ export async function getPublishedPracticeTests() {
     .select()
     .from(practiceTests)
     .where(eq(practiceTests.isPublished, true))
-    .orderBy(desc(practiceTests.createdAt));
+    .orderBy(desc(practiceTests.isPinned), desc(practiceTests.createdAt));
 
   const modules = await db
     .select({

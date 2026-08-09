@@ -103,6 +103,9 @@ export const practiceTests = pgTable("practice_tests", {
   slug: text("slug").notNull().unique(),
   description: text("description"),
   isPublished: boolean("is_published").notNull().default(false),
+  // Pinned tests are shown first on the practice tests list, ahead of
+  // everything else regardless of creation date.
+  isPinned: boolean("is_pinned").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
