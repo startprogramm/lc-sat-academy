@@ -12,6 +12,11 @@ import {
 import { auth } from "@/auth";
 import { getUserById, getUserStats, getRecentAttempts } from "@/db/queries";
 
+const SECTION_SHORT_LABELS: Record<string, string> = {
+  reading_writing: "R&W",
+  math: "Math",
+};
+
 const GRADE_LABELS: Record<string, string> = {
   "9": "9th grade",
   "10": "10th grade",
@@ -185,7 +190,14 @@ export default async function DashboardPage() {
             <ul className="mt-4 space-y-3">
               {recentAttempts.map((attempt) => (
                 <li key={attempt.id} className="text-sm">
-                  <p className="font-medium text-ink">{attempt.testTitle}</p>
+                  <p className="font-medium text-ink">
+                    {attempt.testTitle}
+                    {attempt.sectionFilter ? (
+                      <span className="ml-1.5 text-xs font-normal text-ink-soft">
+                        ({SECTION_SHORT_LABELS[attempt.sectionFilter]} only)
+                      </span>
+                    ) : null}
+                  </p>
                   <p className="text-ink-soft capitalize">
                     {attempt.status.replace("_", " ")}
                   </p>

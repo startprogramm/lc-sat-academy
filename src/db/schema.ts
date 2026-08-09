@@ -172,6 +172,10 @@ export const attempts = pgTable("attempts", {
     .references(() => practiceTests.id, { onDelete: "cascade" }),
   status: attemptStatus("status").notNull().default("in_progress"),
   currentModuleId: uuid("current_module_id").references(() => testModules.id),
+  // Null = the full test (both sections). Set = this attempt only covers
+  // that one section's modules, for students who want to drill just Math
+  // or just Reading & Writing instead of a full-length run.
+  sectionFilter: section("section_filter"),
   startedAt: timestamp("started_at").notNull().defaultNow(),
   completedAt: timestamp("completed_at"),
 });

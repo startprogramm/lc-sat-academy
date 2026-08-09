@@ -10,6 +10,21 @@ const SECTION_LABELS: Record<string, string> = {
   math: "Math",
 };
 
+type SectionKey = "reading_writing" | "math";
+
+function summarizeSection(
+  modules: { section: string; questionCount: number; timeLimitSeconds: number }[],
+  section: SectionKey,
+) {
+  const inSection = modules.filter((m) => m.section === section);
+  return {
+    questions: inSection.reduce((sum, m) => sum + m.questionCount, 0),
+    minutes: Math.round(
+      inSection.reduce((sum, m) => sum + m.timeLimitSeconds, 0) / 60,
+    ),
+  };
+}
+
 export default async function PracticeTestDetailPage({
   params,
 }: {
@@ -30,6 +45,10 @@ export default async function PracticeTestDetailPage({
   const totalMinutes = Math.round(
     test.modules.reduce((sum, m) => sum + m.timeLimitSeconds, 0) / 60,
   );
+
+  const rwSummary = summarizeSection(test.modules, "reading_writing");
+  const mathSummary = summarizeSection(test.modules, "math");
+  const hasBothSections = rwSummary.questions > 0 && mathSummary.questions > 0;
 
   return (
     <div className="mx-auto max-w-2xl px-6 py-10 sm:px-8 sm:py-12">
@@ -97,26 +116,102 @@ export default async function PracticeTestDetailPage({
         <p>
           Each module is timed on its own. Once a module&apos;s time is up,
           you&apos;ll move on automatically — you can&apos;t return to a
-          previous module. There&apos;s a 10-minute break between Reading and
-          Writing and Math.
+          previous module.
+          {hasBothSections
+            ? " There's a 10-minute break between Reading and Writing and Math — unless you take just one section, in which case you can jump straight in."
+            : ""}
         </p>
       </div>
 
-      <form
-        action={async () => {
-          "use server";
-          await startAttempt(test.id);
-        }}
-        className="mt-8"
-      >
-        <button
-          type="submit"
-          className="inline-flex items-center gap-2 rounded-full bg-accent px-6 py-3 text-sm font-semibold text-paper transition-colors hover:bg-accent/90"
-        >
-          Start test
-          <span aria-hidden="true">→</span>
-        </button>
-      </form>
+      <div className="mt-8">
+        <span className="block font-mono text-xs font-semibold uppercase tracking-wider text-ink-soft">
+          {hasBothSections ? "Choose what to practice" : "Start"}
+        </span>
+
+        <div className={`mt-3 grid gap-4 ${hasBothSections ? "sm:grid-cols-3" : ""}`}>
+          <form
+            action={async () => {
+              "use server";
+              await startAttempt(test.id, null);
+            }}
+          >
+            <button
+              type="submit"
+              className="flex h-full w-full flex-col items-start rounded-2xl border-2 border-accent bg-accent p-5 text-left transition-colors hover:bg-accent/90"
+            >
+              <span className="font-mono text-[10px] font-semibold uppercase tracking-wider text-paper/70">
+                Full test
+              </span>
+              <span className="mt-2 font-display text-lg font-bold text-paper">
+                Both sections
+              </span>
+              <span className="mt-1 text-xs text-paper/80">
+                {test.totalQuestions} questions · ~{totalMinutes} min
+              </span>
+              <span className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-paper">
+                Start test
+                <span aria-hidden="true">→</span>
+              </span>
+            </button>
+          </form>
+
+          {hasBothSections ? (
+            <>
+              <form
+                action={async () => {
+                  "use server";
+                  await startAttempt(test.id, "reading_writing");
+                }}
+              >
+                <button
+                  type="submit"
+                  className="flex h-full w-full flex-col items-start rounded-2xl border border-line bg-white p-5 text-left transition-colors hover:border-ink"
+                >
+                  <span className="font-mono text-[10px] font-semibold uppercase tracking-wider text-brand">
+                    Reading &amp; Writing only
+                  </span>
+                  <span className="mt-2 font-display text-lg font-bold text-ink">
+                    Just this section
+                  </span>
+                  <span className="mt-1 text-xs text-ink-soft">
+                    {rwSummary.questions} questions · ~{rwSummary.minutes} min
+                  </span>
+                  <span className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-ink">
+                    Start
+                    <span aria-hidden="true">→</span>
+                  </span>
+                </button>
+              </form>
+
+              <form
+                action={async () => {
+                  "use server";
+                  await startAttempt(test.id, "math");
+                }}
+              >
+                <button
+                  type="submit"
+                  className="flex h-full w-full flex-col items-start rounded-2xl border border-line bg-white p-5 text-left transition-colors hover:border-ink"
+                >
+                  <span className="font-mono text-[10px] font-semibold uppercase tracking-wider text-brand">
+                    Math only
+                  </span>
+                  <span className="mt-2 font-display text-lg font-bold text-ink">
+                    Just this section
+                  </span>
+                  <span className="mt-1 text-xs text-ink-soft">
+                    {mathSummary.questions} questions · ~{mathSummary.minutes} min
+                  </span>
+                  <span className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-ink">
+                    Start
+                    <span aria-hidden="true">→</span>
+                  </span>
+                </button>
+              </form>
+            </>
+          ) : null}
+        </div>
+      </div>
     </div>
   );
 }

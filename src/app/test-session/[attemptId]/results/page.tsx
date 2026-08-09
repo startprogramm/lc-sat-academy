@@ -28,6 +28,7 @@ export default async function TestResultsPage({
       ? Math.round((results.overall.correct / results.overall.total) * 100)
       : 0;
 
+  const sectionFilter = results.sectionFilter;
   const rwScore = getSectionScoreRange(
     results.readingWriting.correct,
     results.readingWriting.total,
@@ -40,9 +41,13 @@ export default async function TestResultsPage({
     results.math.correct,
     results.math.total,
   );
-  const isExactScoring =
-    isExactTableFit(results.readingWriting.total, "reading_writing") &&
-    isExactTableFit(results.math.total, "math");
+  const isExactScoring = sectionFilter
+    ? isExactTableFit(
+        sectionFilter === "reading_writing" ? results.readingWriting.total : results.math.total,
+        sectionFilter,
+      )
+    : isExactTableFit(results.readingWriting.total, "reading_writing") &&
+      isExactTableFit(results.math.total, "math");
 
   return (
     <div className="min-h-screen bg-paper">
@@ -64,58 +69,88 @@ export default async function TestResultsPage({
         <span className="font-mono text-xs font-semibold uppercase tracking-wider text-brand">
           Results
         </span>
-        <h1 className="mt-2 font-display text-3xl font-extrabold uppercase tracking-tight text-ink sm:text-4xl">
-          {results.testTitle}
-        </h1>
-
-        <div className="mt-8 rounded-2xl border border-line bg-ink p-6 text-paper">
-          <p className="font-mono text-xs font-semibold uppercase tracking-wider text-paper/60">
-            Estimated SAT score
-          </p>
-          <p className="mt-2 font-display text-4xl font-extrabold tracking-tight sm:text-5xl">
-            {totalScore.lower}–{totalScore.upper}
-            <span className="ml-2 text-base font-normal text-paper/60">/ 1600</span>
-          </p>
-          <div className="mt-4 flex flex-wrap gap-6 font-mono text-sm text-paper/80">
-            <span>
-              Reading and Writing: {rwScore.lower}–{rwScore.upper}
+        <div className="mt-2 flex items-center gap-2">
+          <h1 className="font-display text-3xl font-extrabold uppercase tracking-tight text-ink sm:text-4xl">
+            {results.testTitle}
+          </h1>
+          {sectionFilter ? (
+            <span className="rounded-full bg-brand/10 px-2.5 py-1 font-mono text-[10px] font-semibold uppercase tracking-wide text-brand">
+              {SECTION_LABELS[sectionFilter]} only
             </span>
-            <span>
-              Math: {mathScore.lower}–{mathScore.upper}
-            </span>
-          </div>
+          ) : null}
         </div>
 
-        <div className="mt-4 grid gap-4 sm:grid-cols-3">
-          <div className="rounded-2xl border border-line bg-white p-6">
-            <p className="font-mono text-4xl font-semibold tracking-tight text-ink">
-              {results.overall.correct}
-              <span className="text-lg text-ink-soft">
-                /{results.overall.total}
-              </span>
+        {sectionFilter ? (
+          <div className="mt-8 rounded-2xl border border-line bg-ink p-6 text-paper">
+            <p className="font-mono text-xs font-semibold uppercase tracking-wider text-paper/60">
+              Estimated {SECTION_LABELS[sectionFilter]} score
             </p>
-            <p className="mt-1 text-sm text-ink-soft">
-              Overall · {percent}% correct
+            <p className="mt-2 font-display text-4xl font-extrabold tracking-tight sm:text-5xl">
+              {sectionFilter === "reading_writing" ? rwScore.lower : mathScore.lower}–
+              {sectionFilter === "reading_writing" ? rwScore.upper : mathScore.upper}
+              <span className="ml-2 text-base font-normal text-paper/60">/ 800</span>
+            </p>
+            <p className="mt-4 text-xs text-paper/60">
+              This only covers {SECTION_LABELS[sectionFilter].toLowerCase()} — take the
+              full test for an overall 1600 estimate.
             </p>
           </div>
-          <div className="rounded-2xl border border-line bg-white p-6">
-            <p className="font-mono text-4xl font-semibold tracking-tight text-ink">
-              {results.readingWriting.correct}
-              <span className="text-lg text-ink-soft">
-                /{results.readingWriting.total}
-              </span>
+        ) : (
+          <div className="mt-8 rounded-2xl border border-line bg-ink p-6 text-paper">
+            <p className="font-mono text-xs font-semibold uppercase tracking-wider text-paper/60">
+              Estimated SAT score
             </p>
-            <p className="mt-1 text-sm text-ink-soft">Reading and Writing</p>
-          </div>
-          <div className="rounded-2xl border border-line bg-white p-6">
-            <p className="font-mono text-4xl font-semibold tracking-tight text-ink">
-              {results.math.correct}
-              <span className="text-lg text-ink-soft">
-                /{results.math.total}
-              </span>
+            <p className="mt-2 font-display text-4xl font-extrabold tracking-tight sm:text-5xl">
+              {totalScore.lower}–{totalScore.upper}
+              <span className="ml-2 text-base font-normal text-paper/60">/ 1600</span>
             </p>
-            <p className="mt-1 text-sm text-ink-soft">Math</p>
+            <div className="mt-4 flex flex-wrap gap-6 font-mono text-sm text-paper/80">
+              <span>
+                Reading and Writing: {rwScore.lower}–{rwScore.upper}
+              </span>
+              <span>
+                Math: {mathScore.lower}–{mathScore.upper}
+              </span>
+            </div>
           </div>
+        )}
+
+        <div className={`mt-4 grid gap-4 ${sectionFilter ? "sm:grid-cols-1" : "sm:grid-cols-3"}`}>
+          {!sectionFilter ? (
+            <div className="rounded-2xl border border-line bg-white p-6">
+              <p className="font-mono text-4xl font-semibold tracking-tight text-ink">
+                {results.overall.correct}
+                <span className="text-lg text-ink-soft">
+                  /{results.overall.total}
+                </span>
+              </p>
+              <p className="mt-1 text-sm text-ink-soft">
+                Overall · {percent}% correct
+              </p>
+            </div>
+          ) : null}
+          {!sectionFilter || sectionFilter === "reading_writing" ? (
+            <div className="rounded-2xl border border-line bg-white p-6">
+              <p className="font-mono text-4xl font-semibold tracking-tight text-ink">
+                {results.readingWriting.correct}
+                <span className="text-lg text-ink-soft">
+                  /{results.readingWriting.total}
+                </span>
+              </p>
+              <p className="mt-1 text-sm text-ink-soft">Reading and Writing</p>
+            </div>
+          ) : null}
+          {!sectionFilter || sectionFilter === "math" ? (
+            <div className="rounded-2xl border border-line bg-white p-6">
+              <p className="font-mono text-4xl font-semibold tracking-tight text-ink">
+                {results.math.correct}
+                <span className="text-lg text-ink-soft">
+                  /{results.math.total}
+                </span>
+              </p>
+              <p className="mt-1 text-sm text-ink-soft">Math</p>
+            </div>
+          ) : null}
         </div>
 
         <p className="mt-4 text-xs text-ink-soft">

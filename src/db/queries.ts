@@ -56,6 +56,7 @@ export async function getRecentAttempts(userId: string, limit = 5) {
       status: attempts.status,
       startedAt: attempts.startedAt,
       completedAt: attempts.completedAt,
+      sectionFilter: attempts.sectionFilter,
       testTitle: practiceTests.title,
       testSlug: practiceTests.slug,
     })
@@ -156,6 +157,9 @@ export async function getPracticeTestBySlug(slug: string) {
   };
 }
 
+// Returns the most recent attempt for this test regardless of section, so
+// visiting the test page resumes whatever's in progress — full test or a
+// section-only run.
 export async function getLatestAttemptForTest(userId: string, testId: string) {
   const [attempt] = await db
     .select()
@@ -192,7 +196,14 @@ export async function getAttemptForRunner(attemptId: string, userId: string) {
       timeLimitSeconds: testModules.timeLimitSeconds,
     })
     .from(testModules)
-    .where(eq(testModules.testId, test.id))
+    .where(
+      and(
+        eq(testModules.testId, test.id),
+        attempt.sectionFilter
+          ? eq(testModules.section, attempt.sectionFilter)
+          : undefined,
+      ),
+    )
     .orderBy(asc(testModules.orderIndex));
 
   const moduleIds = modules.map((m) => m.id);
@@ -269,6 +280,7 @@ export async function getAttemptForRunner(attemptId: string, userId: string) {
     attemptId: attempt.id,
     status: attempt.status,
     currentModuleId: attempt.currentModuleId,
+    sectionFilter: attempt.sectionFilter,
     testTitle: test.title,
     testSlug: test.slug,
     modules: modulesWithQuestions,
@@ -296,7 +308,14 @@ export async function getAttemptResults(attemptId: string, userId: string) {
   const modules = await db
     .select()
     .from(testModules)
-    .where(eq(testModules.testId, test.id))
+    .where(
+      and(
+        eq(testModules.testId, test.id),
+        attempt.sectionFilter
+          ? eq(testModules.section, attempt.sectionFilter)
+          : undefined,
+      ),
+    )
     .orderBy(asc(testModules.orderIndex));
 
   const moduleIds = modules.map((m) => m.id);
@@ -371,6 +390,7 @@ export async function getAttemptResults(attemptId: string, userId: string) {
     testTitle: test.title,
     testSlug: test.slug,
     completedAt: attempt.completedAt,
+    sectionFilter: attempt.sectionFilter,
     overall: summarize(questionResults),
     readingWriting: summarize(bySection("reading_writing")),
     math: summarize(bySection("math")),

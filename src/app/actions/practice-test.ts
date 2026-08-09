@@ -1,6 +1,6 @@
 "use server";
 
-import { and, asc, eq, or } from "drizzle-orm";
+import { and, asc, eq, gt, isNull, or } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
@@ -13,6 +13,8 @@ import {
   responses,
   testModules,
 } from "@/db/schema";
+
+type SectionFilter = "reading_writing" | "math" | null;
 
 function normalizeResponse(value: string): string {
   const trimmed = value.trim().replace(/^\$/, "").replace(/,/g, "");
@@ -30,7 +32,7 @@ function normalizeResponse(value: string): string {
   return trimmed.toLowerCase();
 }
 
-export async function startAttempt(testId: string) {
+export async function startAttempt(testId: string, sectionFilter: SectionFilter = null) {
   const session = await auth();
   if (!session?.user) redirect("/login");
 
@@ -42,6 +44,9 @@ export async function startAttempt(testId: string) {
         eq(attempts.userId, session.user.id),
         eq(attempts.testId, testId),
         eq(attempts.status, "in_progress"),
+        sectionFilter
+          ? eq(attempts.sectionFilter, sectionFilter)
+          : isNull(attempts.sectionFilter),
       ),
     )
     .limit(1);
@@ -53,7 +58,12 @@ export async function startAttempt(testId: string) {
   const [firstModule] = await db
     .select({ id: testModules.id })
     .from(testModules)
-    .where(eq(testModules.testId, testId))
+    .where(
+      and(
+        eq(testModules.testId, testId),
+        sectionFilter ? eq(testModules.section, sectionFilter) : undefined,
+      ),
+    )
     .orderBy(asc(testModules.orderIndex))
     .limit(1);
 
@@ -68,6 +78,7 @@ export async function startAttempt(testId: string) {
       testId,
       status: "in_progress",
       currentModuleId: firstModule.id,
+      sectionFilter,
     })
     .returning();
 
@@ -206,9 +217,13 @@ export async function advanceModule(attemptId: string) {
     .where(
       and(
         eq(testModules.testId, currentModule.testId),
-        eq(testModules.orderIndex, currentModule.orderIndex + 1),
+        gt(testModules.orderIndex, currentModule.orderIndex),
+        attempt.sectionFilter
+          ? eq(testModules.section, attempt.sectionFilter)
+          : undefined,
       ),
     )
+    .orderBy(asc(testModules.orderIndex))
     .limit(1);
 
   if (nextModule) {
