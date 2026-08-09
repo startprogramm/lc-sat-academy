@@ -52,6 +52,11 @@ const MATH_TOPIC_DOMAIN: Record<string, (typeof MATH_DOMAINS)[number]> = {
   "systems of equations": "Algebra",
   "systems of equations — modeling": "Algebra",
   "systems of inequalities": "Algebra",
+  "linear equations in one variable": "Algebra",
+  "linear equations in two variables": "Algebra",
+  "linear functions": "Algebra",
+  "linear inequalities in one or two variables": "Algebra",
+  "systems of two linear equations in two variables": "Algebra",
 
   "exponential functions": "Advanced Math",
   "exponential growth — modeling": "Advanced Math",
@@ -100,9 +105,13 @@ function keywordFallback(section: Section, topic: string): string {
   if (/(circle|triangle|angle|volume|area|trig|geometr)/.test(t)) return "Geometry and Trigonometry";
   if (/(ratio|percent|probability|statistic|data|scatter|unit conversion)/.test(t))
     return "Problem-Solving and Data Analysis";
+  // Checked before the Advanced Math "function" keyword so "linear
+  // functions"/"linear systems" land in Algebra, not Advanced Math — only
+  // "nonlinear" should fall through, and \b keeps it from matching the
+  // "linear" substring inside that word.
+  if (/(\blinear\b|system|inequal|slope|\balgebra\b)/.test(t)) return "Algebra";
   if (/(quadratic|exponential|polynomial|nonlinear|radical|rational|function)/.test(t))
     return "Advanced Math";
-  if (/(linear|system|inequal|slope|algebra)/.test(t)) return "Algebra";
   return "Advanced Math";
 }
 
