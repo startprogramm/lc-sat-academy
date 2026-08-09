@@ -4,11 +4,12 @@ import { useMemo, useState, useTransition } from "react";
 import { ArrowRight, CheckCircle2, RotateCcw, XCircle } from "lucide-react";
 import { getDrillQuestions } from "@/app/actions/question-bank";
 import { normalizeResponse } from "@/lib/normalize-response";
+import { domainsForSection } from "@/lib/sat-domains";
 
 type Section = "reading_writing" | "math";
 type Difficulty = "easy" | "medium" | "hard";
 
-type MetaRow = { section: Section; topic: string; difficulty: Difficulty; value: number };
+type MetaRow = { section: Section; domain: string; difficulty: Difficulty; value: number };
 
 type DrillQuestion = {
   id: string;
@@ -43,13 +44,13 @@ const DIFFICULTY_LABELS: Record<Difficulty, string> = {
 const COUNT_OPTIONS = [5, 10, 15, 20];
 
 export function QuestionBankApp({ meta }: { meta: MetaRow[] }) {
-  const sections = useMemo(
-    () => Array.from(new Set(meta.map((m) => m.section))),
-    [meta],
-  );
+  const sections = useMemo(() => {
+    const present = new Set(meta.map((m) => m.section));
+    return (["reading_writing", "math"] as Section[]).filter((s) => present.has(s));
+  }, [meta]);
 
   const [section, setSection] = useState<Section>(sections[0] ?? "reading_writing");
-  const [topic, setTopic] = useState<string>("all");
+  const [domain, setDomain] = useState<string>("all");
   const [difficulty, setDifficulty] = useState<"all" | Difficulty>("all");
   const [questionCount, setQuestionCount] = useState(10);
   const [phase, setPhase] = useState<"setup" | "drilling" | "summary">("setup");
@@ -61,15 +62,15 @@ export function QuestionBankApp({ meta }: { meta: MetaRow[] }) {
   const [answers, setAnswers] = useState<Record<string, AnswerState>>({});
   const [responseDraft, setResponseDraft] = useState("");
 
-  const topicsForSection = useMemo(() => {
+  const domainsForCurrentSection = useMemo(() => domainsForSection(section), [section]);
+
+  const domainCounts = useMemo(() => {
     const map = new Map<string, number>();
     for (const row of meta) {
       if (row.section !== section) continue;
-      map.set(row.topic, (map.get(row.topic) ?? 0) + row.value);
+      map.set(row.domain, (map.get(row.domain) ?? 0) + row.value);
     }
-    return Array.from(map.entries())
-      .map(([t, value]) => ({ topic: t, value }))
-      .sort((a, b) => a.topic.localeCompare(b.topic));
+    return map;
   }, [meta, section]);
 
   const availableCount = useMemo(() => {
@@ -77,15 +78,15 @@ export function QuestionBankApp({ meta }: { meta: MetaRow[] }) {
       .filter(
         (row) =>
           row.section === section &&
-          (topic === "all" || row.topic === topic) &&
+          (domain === "all" || row.domain === domain) &&
           (difficulty === "all" || row.difficulty === difficulty),
       )
       .reduce((sum, row) => sum + row.value, 0);
-  }, [meta, section, topic, difficulty]);
+  }, [meta, section, domain, difficulty]);
 
   const handleSectionChange = (next: Section) => {
     setSection(next);
-    setTopic("all");
+    setDomain("all");
   };
 
   const runDrill = () => {
@@ -93,7 +94,7 @@ export function QuestionBankApp({ meta }: { meta: MetaRow[] }) {
     startTransition(async () => {
       const result = await getDrillQuestions({
         section,
-        topic: topic === "all" ? null : topic,
+        domain: domain === "all" ? null : domain,
         difficulty: difficulty === "all" ? null : difficulty,
         count: questionCount,
       });
@@ -189,14 +190,14 @@ export function QuestionBankApp({ meta }: { meta: MetaRow[] }) {
               </label>
               <select
                 id="qb-topic"
-                value={topic}
-                onChange={(e) => setTopic(e.target.value)}
+                value={domain}
+                onChange={(e) => setDomain(e.target.value)}
                 className="mt-2 w-full rounded-lg border border-line px-3.5 py-2.5 text-sm text-ink outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
               >
-                <option value="all">All topics</option>
-                {topicsForSection.map((t) => (
-                  <option key={t.topic} value={t.topic}>
-                    {t.topic} ({t.value})
+                <option value="all">All skills</option>
+                {domainsForCurrentSection.map((d) => (
+                  <option key={d} value={d}>
+                    {d} ({domainCounts.get(d) ?? 0})
                   </option>
                 ))}
               </select>

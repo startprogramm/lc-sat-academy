@@ -10,20 +10,21 @@ import {
   questions,
   testModules,
 } from "@/db/schema";
+import { getDomain } from "@/lib/sat-domains";
 
 type Section = "reading_writing" | "math";
 type Difficulty = "easy" | "medium" | "hard";
 
 type DrillFilters = {
   section: Section;
-  topic?: string | null;
+  domain?: string | null;
   difficulty?: Difficulty | null;
   count: number;
 };
 
 export async function getDrillQuestions({
   section,
-  topic,
+  domain,
   difficulty,
   count,
 }: DrillFilters) {
@@ -31,6 +32,20 @@ export async function getDrillQuestions({
   if (!session?.user) return [];
 
   const clampedCount = Math.min(Math.max(Math.floor(count), 1), 30);
+
+  // Domain isn't a DB column — it's derived from `topic` — so when a
+  // domain filter is requested, resolve it to the concrete topic strings
+  // that map to it first.
+  let topicsInDomain: string[] | null = null;
+  if (domain) {
+    const distinctTopics = await db
+      .selectDistinct({ topic: questions.topic })
+      .from(questions)
+      .where(eq(questions.section, section));
+    topicsInDomain = distinctTopics
+      .map((t) => t.topic)
+      .filter((t) => getDomain(section, t) === domain);
+  }
 
   const rows = await db
     .select({
@@ -47,14 +62,14 @@ export async function getDrillQuestions({
     .where(
       and(
         eq(questions.section, section),
-        topic ? eq(questions.topic, topic) : undefined,
+        topicsInDomain ? inArray(questions.topic, topicsInDomain) : undefined,
         difficulty ? eq(questions.difficulty, difficulty) : undefined,
         sql`EXISTS (
           SELECT 1 FROM ${moduleQuestions}
           INNER JOIN ${testModules} ON ${testModules.id} = ${moduleQuestions.moduleId}
           INNER JOIN ${practiceTests} ON ${practiceTests.id} = ${testModules.testId}
           WHERE ${moduleQuestions.questionId} = ${questions.id}
-            AND ${practiceTests.isPublished} = true
+            AND (${practiceTests.isPublished} = true OR ${practiceTests.isBankOnly} = true)
         )`,
       ),
     )

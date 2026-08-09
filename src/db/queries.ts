@@ -1,4 +1,5 @@
 import { and, asc, count, desc, eq, isNotNull, or, sql } from "drizzle-orm";
+import { getDomain } from "@/lib/sat-domains";
 import { db } from "@/db";
 import {
   attempts,
@@ -172,11 +173,13 @@ export async function getLatestAttemptForTest(userId: string, testId: string) {
 
 // --- Question bank ---
 
-// One row per (section, topic, difficulty) combo, counting only questions
-// that belong to at least one module of a published test — so the bank
-// never surfaces content from a draft/unpublished test.
+// One row per (section, domain, difficulty) combo, counting only questions
+// that belong to at least one module of a published (or bank-only) test —
+// so the bank never surfaces content from a draft/unpublished test. Domains
+// are the SAT's four broad skill groupings per section; individual question
+// `topic`s are rolled up into them here rather than exposed directly.
 export async function getQuestionBankMeta() {
-  return db
+  const rows = await db
     .select({
       section: questions.section,
       topic: questions.topic,
@@ -190,10 +193,26 @@ export async function getQuestionBankMeta() {
         INNER JOIN ${testModules} ON ${testModules.id} = ${moduleQuestions.moduleId}
         INNER JOIN ${practiceTests} ON ${practiceTests.id} = ${testModules.testId}
         WHERE ${moduleQuestions.questionId} = ${questions.id}
-          AND ${practiceTests.isPublished} = true
+          AND (${practiceTests.isPublished} = true OR ${practiceTests.isBankOnly} = true)
       )`,
     )
     .groupBy(questions.section, questions.topic, questions.difficulty);
+
+  const aggregated = new Map<
+    string,
+    { section: (typeof rows)[number]["section"]; domain: string; difficulty: (typeof rows)[number]["difficulty"]; value: number }
+  >();
+  for (const row of rows) {
+    const domain = getDomain(row.section, row.topic);
+    const key = `${row.section}|${domain}|${row.difficulty}`;
+    const existing = aggregated.get(key);
+    if (existing) {
+      existing.value += row.value;
+    } else {
+      aggregated.set(key, { section: row.section, domain, difficulty: row.difficulty, value: row.value });
+    }
+  }
+  return Array.from(aggregated.values());
 }
 
 // --- Test runner ---

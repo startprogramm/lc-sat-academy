@@ -106,6 +106,10 @@ export const practiceTests = pgTable("practice_tests", {
   // Pinned tests are shown first on the practice tests list, ahead of
   // everything else regardless of creation date.
   isPinned: boolean("is_pinned").notNull().default(false),
+  // Bank-only tests hold standalone question-bank content: never shown in
+  // the practice tests catalog or startable as a timed test (isPublished
+  // stays false), but still counted toward the question bank's pool.
+  isBankOnly: boolean("is_bank_only").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
